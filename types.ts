@@ -1,23 +1,28 @@
 
 export interface SensorData {
   id: string;
-  room: string;
-  presence: boolean;
-  status: 'ONLINE' | 'COMM_HANG' | 'SIGNAL_LOSS' | 'SECURE';
-  distance?: number;
-  speed?: number;
-  breathingRate?: number;
-  heartRate?: number;
-  temp?: number;
-  humidity?: number;
-  voltage?: number;
-  current?: number;
-  rfStatus?: 'clear' | 'interference' | 'active';
+  name: string;
+  status: 'ONLINE' | 'OFFLINE' | 'ALERT';
   systemHealth: number;
-  timestamp: string;
+  lastUpdate: string;
+  metrics: {
+    label: string;
+    value: string | number;
+    unit: string;
+    trend?: 'up' | 'down' | 'stable';
+  }[];
 }
 
+export interface Alert {
+  id: string;
+  timestamp: string;
+  node: string;
+  message: string;
+  type: 'INFO' | 'WARNING' | 'CRITICAL';
+}
+
+// Fixed: Added ChartData interface which was missing and causing errors in components/ChartPanel.tsx
 export interface ChartData {
-  time: string;
-  [key: string]: string | number;
+  time: string | number;
+  [key: string]: string | number | undefined;
 }
