@@ -1,172 +1,236 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './Sidebar';
 import { ICONS } from './constants';
-import { SensorData } from './types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { SensorData, Alert } from './types';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
-  
-  // Tactical 7-Node Architecture initialization
-  const [nodes] = useState<Record<string, SensorData>>({
-    'External Surveillance': { id: 'NODE-01', room: 'External Surveillance', presence: false, status: 'ONLINE', rfStatus: 'clear', systemHealth: 98, timestamp: '14:22:01' },
-    'Main Entry': { id: 'NODE-02', room: 'Main Entry', presence: false, status: 'COMM_HANG', distance: 0, heartRate: 0, systemHealth: 32, timestamp: '14:21:44' },
-    'Perimeter Zone A': { id: 'NODE-03', room: 'Perimeter Zone A', presence: false, status: 'SECURE', distance: 0, heartRate: 0, systemHealth: 99, timestamp: '14:22:05' },
-    'Perimeter Zone B': { id: 'NODE-04', room: 'Perimeter Zone B', presence: false, status: 'SECURE', distance: 0, heartRate: 0, systemHealth: 99, timestamp: '14:22:05' },
-    'Arms Storage': { id: 'NODE-05', room: 'Arms Storage', presence: false, status: 'ONLINE', temp: 18.2, humidity: 32, systemHealth: 100, timestamp: '14:22:03' },
-    'Jammer Area': { id: 'NODE-06', room: 'Jammer Area', presence: false, status: 'SIGNAL_LOSS', temp: 0, voltage: 0, current: 0, systemHealth: 8, timestamp: '14:18:22' },
-    'Control Room': { id: 'NODE-07', room: 'Control Room', presence: false, status: 'SECURE', temp: 21.8, heartRate: 0, systemHealth: 99, timestamp: '14:22:06' },
-  });
+  const [alerts, setAlerts] = useState<Alert[]>([
+    { id: '1', timestamp: '10:05:22', node: 'NODE-02', message: 'MR02BHA: Heart rate tracking initiated', type: 'INFO' },
+    { id: '2', timestamp: '10:08:45', node: 'NODE-01', message: 'LPDA: RF Signal Gain within nominal limits', type: 'INFO' },
+  ]);
 
-  const analyticsData = useMemo(() => {
-    return Object.values(nodes).map(node => ({
-      name: node.room.replace('Perimeter Zone ', 'PZ-').split(' ')[0],
-      health: node.systemHealth,
-      thermal: node.temp || (node.status === 'ONLINE' || node.status === 'SECURE' ? 22 : 0),
-    }));
+  // Initial Mock Data for Phase-1
+  const [nodes, setNodes] = useState<SensorData[]>([
+    {
+      id: 'NODE-01',
+      name: 'Outside Perimeter',
+      status: 'ONLINE',
+      systemHealth: 98,
+      lastUpdate: 'Just now',
+      metrics: [
+        { label: 'LPDA Gain', value: 12.4, unit: 'dBi' },
+        { label: 'RF Noise', value: -92, unit: 'dBm' }
+      ]
+    },
+    {
+      id: 'NODE-02',
+      name: 'Main Entry',
+      status: 'ONLINE',
+      systemHealth: 99,
+      lastUpdate: 'Just now',
+      metrics: [
+        { label: 'Heart Rate', value: 72, unit: 'BPM' },
+        { label: 'Breath Rate', value: 16, unit: 'RPM' }
+      ]
+    },
+    {
+      id: 'NODE-03',
+      name: 'Ammunition Room',
+      status: 'ONLINE',
+      systemHealth: 100,
+      lastUpdate: 'Just now',
+      metrics: [
+        { label: 'Temp', value: 24.2, unit: '°C' },
+        { label: 'Smoke', value: 12, unit: 'PPM' }
+      ]
+    },
+    {
+      id: 'NODE-04',
+      name: 'Command Room',
+      status: 'ONLINE',
+      systemHealth: 97,
+      lastUpdate: 'Just now',
+      metrics: [
+        { label: 'CPU Temp', value: 42, unit: '°C' },
+        { label: 'RAM Usage', value: 14, unit: '%' }
+      ]
+    },
+    {
+      id: 'NODE-05',
+      name: 'Vehicle Zone',
+      status: 'ONLINE',
+      systemHealth: 99,
+      lastUpdate: 'Just now',
+      metrics: [
+        { label: 'Incursion', value: 'NO', unit: '' },
+        { label: 'Dist', value: 4.2, unit: 'm' }
+      ]
+    }
+  ]);
+
+  // Simulated live telemetry updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNodes(prev => prev.map(node => ({
+        ...node,
+        metrics: node.metrics.map(m => {
+          if (typeof m.value === 'number') {
+            const variation = (Math.random() - 0.5) * 0.5;
+            return { ...m, value: parseFloat((m.value + variation).toFixed(1)) };
+          }
+          return m;
+        })
+      })));
+
+      // Occasional random alert
+      if (Math.random() > 0.85) {
+        const randomNode = nodes[Math.floor(Math.random() * nodes.length)];
+        const newAlert: Alert = {
+          id: Date.now().toString(),
+          timestamp: new Date().toLocaleTimeString(),
+          node: randomNode.id,
+          message: `Periodic packet check: ${randomNode.id} signal verified.`,
+          type: 'INFO'
+        };
+        setAlerts(prev => [newAlert, ...prev].slice(0, 10));
+      }
+    }, 3000);
+    return () => clearInterval(interval);
   }, [nodes]);
 
-  const toggleRoom = (room: string) => {
-    setExpandedRoom(expandedRoom === room ? null : room);
-  };
-
-  const renderTelemetryGrid = (node: SensorData) => {
-    const isHung = node.status === 'COMM_HANG' || node.status === 'SIGNAL_LOSS';
-    
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-        <div className="bg-[#0d1117] border border-[#30363d] p-6 rounded-[2rem] relative overflow-hidden group/tile">
-          <div className="flex items-center gap-2 text-[#ff2d55] mb-2">
-            <ICONS.Heart /> <span className="text-[10px] font-black uppercase tracking-widest">BIO_HEART</span>
-          </div>
-          <div className={`text-4xl font-mono font-black ${isHung ? 'text-slate-800' : 'text-slate-100'}`}>
-            {isHung ? '---' : '0'} <span className="text-[10px] text-slate-500">BPM</span>
-          </div>
-        </div>
-
-        <div className="bg-[#0d1117] border border-[#30363d] p-6 rounded-[2rem] relative overflow-hidden group/tile">
-          <div className="flex items-center gap-2 text-[#00ff9d] mb-2">
-            <ICONS.Temp /> <span className="text-[10px] font-black uppercase tracking-widest">THERMAL</span>
-          </div>
-          <div className={`text-4xl font-mono font-black ${isHung ? 'text-slate-800' : 'text-slate-100'}`}>
-            {isHung ? 'ERR' : `${node.temp || '0.0'}°C`}
-          </div>
-        </div>
-
-        <div className="bg-[#0d1117] border border-[#30363d] p-6 rounded-[2rem] relative overflow-hidden group/tile">
-          <div className="flex items-center gap-2 text-[#ffb800] mb-2">
-            <ICONS.Zap /> <span className="text-[10px] font-black uppercase tracking-widest">BUS_VOLT</span>
-          </div>
-          <div className={`text-4xl font-mono font-black ${isHung ? 'text-slate-800' : 'text-slate-100'}`}>
-            {isHung ? '0.00' : `${node.voltage || '0.0'}V`}
-          </div>
-        </div>
-
-        <div className="bg-[#0d1117] border border-[#30363d] p-6 rounded-[2rem] relative overflow-hidden group/tile">
-          <div className="flex items-center gap-2 text-[#00e5ff] mb-2">
-            <ICONS.Shield /> <span className="text-[10px] font-black uppercase tracking-widest">ZONE_PROX</span>
-          </div>
-          <div className={`text-4xl font-mono font-black ${isHung ? 'text-slate-800' : 'text-slate-100'}`}>
-            {isHung ? '--' : '0.0m'}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const chartData = useMemo(() => {
+    return Array.from({ length: 10 }).map((_, i) => ({
+      time: i,
+      value: 60 + Math.random() * 20
+    }));
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-[#010409] text-slate-100 font-['Inter']">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 p-8 lg:p-12 overflow-y-auto relative">
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
-             style={{ backgroundImage: 'radial-gradient(#00ff9d 1px, transparent 1px)', backgroundSize: '50px 50px' }}></div>
-
-        <header className="mb-16 relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="h-3 w-3 bg-[#00ff9d] rounded-full animate-pulse shadow-[0_0_25px_#00ff9d]"></div>
-              <span className="text-[11px] font-black tracking-[0.5em] text-[#00ff9d] uppercase opacity-80">TACTICAL_NETWORK_ESTABLISHED</span>
-            </div>
-            <h1 className="text-7xl xl:text-9xl font-black italic uppercase tracking-tighter text-white leading-[0.85] drop-shadow-2xl">
-              GLOBAL_TACTICAL_HUB
-            </h1>
-            <p className="text-[11px] font-mono text-slate-500 uppercase tracking-widest font-bold border-l-2 border-[#00ff9d]/40 pl-5 py-2">
-              SESSION_ROOT_ADMIN // X-LINK ACTIVE // ENCRYPT_MODE: AES-256-GCM
+      <main className="flex-1 p-8 lg:p-10 overflow-y-auto">
+        {/* Header Section */}
+        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">Military Automation Dashboard</h1>
+            <p className="text-slate-500 font-mono text-xs uppercase tracking-[0.2em] mt-2">
+              <span className="text-[#0ea5e9]">PHASE-1:</span> System Visualization & Telemetry Prototype
+            </p>
+          </div>
+          <div className="bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 px-6 py-4 rounded-2xl max-w-xs">
+            <p className="text-[10px] font-bold text-[#0ea5e9] uppercase mb-1">Prototype Note</p>
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              Backend MQTT + SQLite integration completed, live ESP32 streaming under development.
             </p>
           </div>
         </header>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 relative z-10">
-          <div className="lg:col-span-2 bg-[#0d1117]/60 border border-[#30363d] p-10 rounded-[3rem] backdrop-blur-3xl shadow-2xl">
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Sensor_Cross_Comparison</h2>
-              <div className="flex gap-6">
-                <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-[#00ff9d] rounded-full"></div><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">HEALTH</span></div>
+        {/* Status Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+          {nodes.map(node => (
+            <div key={node.id} className="bg-[#0d1117] border border-[#30363d] p-5 rounded-2xl hover:border-[#0ea5e9]/40 transition-colors">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-[9px] font-black text-slate-500 uppercase">{node.id}</span>
+                <div className={`w-2 h-2 rounded-full ${node.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`}></div>
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1 truncate">{node.name}</h3>
+              <p className="text-[10px] text-emerald-500/80 font-mono font-bold">{node.status} // {node.systemHealth}% Health</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Detailed Telemetry */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="glass-card p-8 rounded-3xl">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-bold uppercase italic text-white">Live Node Telemetry</h2>
+                <span className="text-[10px] font-mono text-slate-500">POLLING_INTERVAL: 3000ms</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {nodes.map(node => (
+                  <div key={node.id + '-metrics'} className="bg-[#010409]/60 border border-[#30363d] p-6 rounded-2xl">
+                    <div className="flex items-center gap-3 mb-4">
+                       <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[#0ea5e9]">
+                          <ICONS.Activity />
+                       </div>
+                       <div>
+                          <p className="text-[9px] font-black text-slate-500 uppercase">{node.id}</p>
+                          <p className="text-xs font-bold text-white">{node.name}</p>
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {node.metrics.map((m, i) => (
+                        <div key={i}>
+                          <p className="text-[8px] font-black text-slate-600 uppercase mb-1">{m.label}</p>
+                          <p className="text-lg font-mono font-bold text-slate-200">
+                            {m.value} <span className="text-[10px] text-slate-500 font-sans">{m.unit}</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analyticsData}>
+
+            {/* Simple Performance Chart */}
+            <div className="glass-card p-8 rounded-3xl h-[300px]">
+              <h3 className="text-sm font-bold uppercase text-slate-500 mb-6 tracking-widest">Network Stability (Last 10 Cycles)</h3>
+              <ResponsiveContainer width="100%" height="80%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                  <XAxis dataKey="name" stroke="#4b5563" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#4b5563" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis hide />
+                  <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip 
-                    cursor={{ fill: 'rgba(0, 255, 157, 0.05)' }}
-                    contentStyle={{ backgroundColor: '#010409', border: '1px solid #30363d', borderRadius: '24px' }}
+                    contentStyle={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}
                   />
-                  <Bar dataKey="health" fill="#00ff9d" radius={[6, 6, 0, 0]} barSize={20}>
-                    {analyticsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.health < 40 ? '#ff2d55' : '#00ff9d'} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Area type="monotone" dataKey="value" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorVal)" strokeWidth={3} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10 pb-32">
-          {Object.values(nodes).map((node) => {
-            const isExpanded = expandedRoom === node.room;
-            const isHung = node.status === 'COMM_HANG' || node.status === 'SIGNAL_LOSS';
-
-            return (
-              <div 
-                key={node.id}
-                className={`group relative flex flex-col transition-all duration-700 rounded-[4.5rem] border overflow-hidden ${
-                  isExpanded 
-                    ? 'md:col-span-2 border-[#00ff9d]/50 bg-[#00ff9d]/[0.02] shadow-[0_80px_160px_rgba(0,255,157,0.1)]' 
-                    : isHung 
-                      ? 'border-[#ff2d55]/40 bg-[#ff2d55]/[0.04] hover:border-[#ff2d55]/60' 
-                      : 'border-[#30363d] bg-[#0d1117]/40 hover:border-[#00ff9d]/40'
-                }`}
-              >
-                <div className="p-12 flex flex-col h-full relative z-10">
-                  <div className="flex justify-between items-start mb-10">
-                    <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center border-2 ${isHung ? 'border-[#ff2d55]/50 text-[#ff2d55]' : 'border-[#30363d] text-slate-600'}`}>
-                      {node.room.includes('Surveillance') ? <ICONS.Camera /> : <ICONS.Shield />}
-                    </div>
-                    <button 
-                      onClick={() => toggleRoom(node.room)}
-                      className="h-16 w-16 rounded-[1.8rem] flex items-center justify-center border-2 border-[#30363d] text-slate-500"
-                    >
-                      <ICONS.ChevronRight />
-                    </button>
+          {/* Alert Panel */}
+          <div className="glass-card p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></div>
+              <h2 className="text-lg font-bold uppercase italic text-white tracking-tighter">Event Logs</h2>
+            </div>
+            
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+              {alerts.map(alert => (
+                <div key={alert.id} className="bg-[#010409] border-l-2 border-[#0ea5e9] p-4 rounded-r-xl">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] font-black text-[#0ea5e9] uppercase">{alert.node}</span>
+                    <span className="text-[8px] font-mono text-slate-500">{alert.timestamp}</span>
                   </div>
-                  <h3 className="text-4xl font-black italic uppercase tracking-tighter text-white">{node.room}</h3>
-                  <div className="flex items-center gap-4 mt-5">
-                    <span className={`text-[10px] font-black uppercase px-5 py-2 rounded-full border ${isHung ? 'border-[#ff2d55]/40 text-[#ff2d55]' : 'border-[#30363d] text-slate-500'}`}>
-                      {node.status}
-                    </span>
-                  </div>
-                  {isExpanded && renderTelemetryGrid(node)}
+                  <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
+                    {alert.message}
+                  </p>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+              {alerts.length === 0 && (
+                <p className="text-center text-slate-600 text-xs py-20">Awaiting system events...</p>
+              )}
+            </div>
+            
+            <button className="mt-8 w-full py-4 border border-[#30363d] rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-500 transition-all">
+              Clear History Log
+            </button>
+          </div>
         </div>
       </main>
     </div>
