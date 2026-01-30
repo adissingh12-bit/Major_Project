@@ -12,7 +12,6 @@ const App: React.FC = () => {
     { id: '2', timestamp: '10:08:45', node: 'NODE-01', message: 'LPDA: RF Signal Gain within nominal limits', type: 'INFO' },
   ]);
 
-  // Initial Mock Data for Phase-1
   const [nodes, setNodes] = useState<SensorData[]>([
     {
       id: 'NODE-01',
@@ -71,7 +70,6 @@ const App: React.FC = () => {
     }
   ]);
 
-  // Simulated live telemetry updates
   useEffect(() => {
     const interval = setInterval(() => {
       setNodes(prev => prev.map(node => ({
@@ -85,14 +83,13 @@ const App: React.FC = () => {
         })
       })));
 
-      // Occasional random alert
-      if (Math.random() > 0.85) {
+      if (Math.random() > 0.9) {
         const randomNode = nodes[Math.floor(Math.random() * nodes.length)];
         const newAlert: Alert = {
           id: Date.now().toString(),
           timestamp: new Date().toLocaleTimeString(),
           node: randomNode.id,
-          message: `Periodic packet check: ${randomNode.id} signal verified.`,
+          message: `Sensor link verified: ${randomNode.id} transmitting normally.`,
           type: 'INFO'
         };
         setAlerts(prev => [newAlert, ...prev].slice(0, 10));
@@ -102,26 +99,25 @@ const App: React.FC = () => {
   }, [nodes]);
 
   const chartData = useMemo(() => {
-    return Array.from({ length: 10 }).map((_, i) => ({
+    return Array.from({ length: 15 }).map((_, i) => ({
       time: i,
-      value: 60 + Math.random() * 20
+      value: 85 + Math.random() * 10
     }));
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-[#010409] text-slate-100 font-['Inter']">
+    <div className="flex min-h-screen bg-[#010409] text-slate-100 font-['Inter'] relative">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="flex-1 p-8 lg:p-10 overflow-y-auto">
-        {/* Header Section */}
         <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
+          <div className="animate-in fade-in slide-in-from-left duration-700">
             <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">Military Automation Dashboard</h1>
             <p className="text-slate-500 font-mono text-xs uppercase tracking-[0.2em] mt-2">
               <span className="text-[#0ea5e9]">PHASE-1:</span> System Visualization & Telemetry Prototype
             </p>
           </div>
-          <div className="bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 px-6 py-4 rounded-2xl max-w-xs">
+          <div className="bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 px-6 py-4 rounded-2xl max-w-xs animate-in zoom-in duration-1000">
             <p className="text-[10px] font-bold text-[#0ea5e9] uppercase mb-1">Prototype Note</p>
             <p className="text-[11px] leading-relaxed text-slate-400">
               Backend MQTT + SQLite integration completed, live ESP32 streaming under development.
@@ -129,13 +125,12 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Status Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          {nodes.map(node => (
-            <div key={node.id} className="bg-[#0d1117] border border-[#30363d] p-5 rounded-2xl hover:border-[#0ea5e9]/40 transition-colors">
+          {nodes.map((node, idx) => (
+            <div key={node.id} className="bg-[#0d1117] border border-[#30363d] p-5 rounded-2xl hover:border-[#0ea5e9]/40 transition-all duration-300 transform hover:-translate-y-1" style={{ animationDelay: `${idx * 100}ms` }}>
               <div className="flex justify-between items-start mb-4">
                 <span className="text-[9px] font-black text-slate-500 uppercase">{node.id}</span>
-                <div className={`w-2 h-2 rounded-full ${node.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`}></div>
+                <div className={`w-2 h-2 rounded-full ${node.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]`}></div>
               </div>
               <h3 className="text-sm font-bold text-white mb-1 truncate">{node.name}</h3>
               <p className="text-[10px] text-emerald-500/80 font-mono font-bold">{node.status} // {node.systemHealth}% Health</p>
@@ -143,22 +138,23 @@ const App: React.FC = () => {
           ))}
         </div>
 
-        {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Detailed Telemetry */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="glass-card p-8 rounded-3xl">
+            <div className="glass-card p-8 rounded-3xl shadow-2xl">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl font-bold uppercase italic text-white">Live Node Telemetry</h2>
-                <span className="text-[10px] font-mono text-slate-500">POLLING_INTERVAL: 3000ms</span>
+                <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                   <span className="text-[10px] font-mono text-slate-500 uppercase">Polling: 3.0s</span>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {nodes.map(node => (
-                  <div key={node.id + '-metrics'} className="bg-[#010409]/60 border border-[#30363d] p-6 rounded-2xl">
+                  <div key={node.id + '-metrics'} className="bg-[#010409]/60 border border-[#30363d] p-6 rounded-2xl group hover:border-[#0ea5e9]/30 transition-colors">
                     <div className="flex items-center gap-3 mb-4">
-                       <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-[#0ea5e9]">
-                          <ICONS.Activity />
+                       <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-[#0ea5e9] group-hover:scale-110 transition-transform">
+                          {node.id === 'NODE-01' ? <ICONS.Radio /> : <ICONS.Activity />}
                        </div>
                        <div>
                           <p className="text-[9px] font-black text-slate-500 uppercase">{node.id}</p>
@@ -168,9 +164,9 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {node.metrics.map((m, i) => (
                         <div key={i}>
-                          <p className="text-[8px] font-black text-slate-600 uppercase mb-1">{m.label}</p>
+                          <p className="text-[8px] font-black text-slate-600 uppercase mb-1 tracking-widest">{m.label}</p>
                           <p className="text-lg font-mono font-bold text-slate-200">
-                            {m.value} <span className="text-[10px] text-slate-500 font-sans">{m.unit}</span>
+                            {m.value} <span className="text-[10px] text-slate-500 font-sans font-normal">{m.unit}</span>
                           </p>
                         </div>
                       ))}
@@ -180,9 +176,8 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Simple Performance Chart */}
             <div className="glass-card p-8 rounded-3xl h-[300px]">
-              <h3 className="text-sm font-bold uppercase text-slate-500 mb-6 tracking-widest">Network Stability (Last 10 Cycles)</h3>
+              <h3 className="text-xs font-black uppercase text-slate-500 mb-6 tracking-[0.3em]">Network Stability Index</h3>
               <ResponsiveContainer width="100%" height="80%">
                 <AreaChart data={chartData}>
                   <defs>
@@ -195,7 +190,8 @@ const App: React.FC = () => {
                   <XAxis hide />
                   <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}
+                    contentStyle={{ backgroundColor: '#0d1117', border: '1px solid #30363d', borderRadius: '12px' }}
+                    itemStyle={{ color: '#0ea5e9' }}
                   />
                   <Area type="monotone" dataKey="value" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorVal)" strokeWidth={3} />
                 </AreaChart>
@@ -203,18 +199,17 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Alert Panel */}
           <div className="glass-card p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></div>
-              <h2 className="text-lg font-bold uppercase italic text-white tracking-tighter">Event Logs</h2>
+              <h2 className="text-lg font-bold uppercase italic text-white tracking-tighter">System Intelligence Logs</h2>
             </div>
             
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
               {alerts.map(alert => (
-                <div key={alert.id} className="bg-[#010409] border-l-2 border-[#0ea5e9] p-4 rounded-r-xl">
+                <div key={alert.id} className="bg-[#010409] border-l-2 border-[#0ea5e9] p-4 rounded-r-xl animate-in slide-in-from-right duration-500">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] font-black text-[#0ea5e9] uppercase">{alert.node}</span>
+                    <span className="text-[9px] font-black text-[#0ea5e9] uppercase tracking-widest">{alert.node}</span>
                     <span className="text-[8px] font-mono text-slate-500">{alert.timestamp}</span>
                   </div>
                   <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
@@ -223,12 +218,12 @@ const App: React.FC = () => {
                 </div>
               ))}
               {alerts.length === 0 && (
-                <p className="text-center text-slate-600 text-xs py-20">Awaiting system events...</p>
+                <p className="text-center text-slate-600 text-xs py-20 font-mono">Awaiting primary downlink...</p>
               )}
             </div>
             
-            <button className="mt-8 w-full py-4 border border-[#30363d] rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white hover:border-slate-500 transition-all">
-              Clear History Log
+            <button className="mt-8 w-full py-4 border border-[#30363d] rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white hover:bg-slate-800 transition-all active:scale-95">
+              Clear History Buffer
             </button>
           </div>
         </div>
